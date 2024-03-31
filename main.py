@@ -38,6 +38,7 @@ while True:
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  # Convert frame to grayscale
     faces = face_classifier.detectMultiScale(gray)  # Detect faces in the grayscale frame
 
+
     # Flag to control emotion detection loop
     detect_emotion = True
 
