@@ -7,6 +7,11 @@ import numpy as np
 import os
 import random
 import pygame
+import socket
+
+# Define the IP address and port of the NodeMCU server
+NODEMCU_IP = '192.168.1.7'  # Replace with the IP address of NodeMCU
+NODEMCU_PORT = 12345  # Choose a port number
 
 # Load pre-trained face detection model and emotion classification model
 face_classifier = cv2.CascadeClassifier(r'D:\EmoMelody\EmoMelody\haarcascade_frontalface_default.xml')
@@ -23,6 +28,18 @@ start_time = time()  # Start time for 10-second interval
 emotion_counter = {label: 0 for label in emotion_labels}  # Dictionary to count occurrences of each emotion
 total_frames = 0  # Counter for total frames processed
 
+# Function to send emotion data to NodeMCU
+def send_emotion_to_node_mcu(emotion):
+    try:
+        # Create a socket object
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            # Connect to the NodeMCU server
+            s.connect((NODEMCU_IP, NODEMCU_PORT))
+            # Send emotion data over the socket connection
+            s.sendall(emotion.encode())
+        print("Emotion data sent to NodeMCU successfully")
+    except Exception as e:
+        print("Error sending emotion data to NodeMCU:", e)
 
 # Function to play audio based on detected emotion
 def play_audio(emotion, song_path):
@@ -30,14 +47,12 @@ def play_audio(emotion, song_path):
     pygame.mixer.music.load(song_path)  # Load the selected song
     pygame.mixer.music.play()  # Play the song
 
-
 # Main loop for emotion detection
 while True:
     _, frame = cap.read()  # Read frame from video capture
     labels = []
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  # Convert frame to grayscale
     faces = face_classifier.detectMultiScale(gray)  # Detect faces in the grayscale frame
-
 
     # Flag to control emotion detection loop
     detect_emotion = True
@@ -67,6 +82,16 @@ while True:
         most_common_emotion = max(emotion_counter, key=emotion_counter.get)  # Find the most occurring emotion
         print("Most occurring emotion:", most_common_emotion)  # Print the most occurring emotion
         print("Total frames processed:", total_frames)  # Print total frames processed
+        send_emotion_to_node_mcu(most_common_emotion)
+
+        # Release and reinitialize the video capture object
+        cap.release()
+        cap = cv2.VideoCapture(0)
+
+        # Reset emotion detection variables
+        start_time = time()
+        emotion_counter = {label: 0 for label in emotion_labels}
+        total_frames = 0
 
         # Define folders containing songs corresponding to each emotion
         folder_mapping = {
@@ -85,9 +110,6 @@ while True:
                 # Select a random song from the folder
                 song_path = os.path.join(folder_path, random.choice(songs))
                 play_audio(most_common_emotion, song_path)  # Play audio based on the most occurring emotion
-
-        start_time = time()  # Reset start time for next 10-second interval
-        emotion_counter = {label: 0 for label in emotion_labels}  # Reset emotion counter
 
         # Wait for song to finish playing before resuming emotion detection
         song_duration = pygame.mixer.Sound(song_path).get_length()
