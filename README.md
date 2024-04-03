@@ -1,3 +1,2 @@
-# Emotion_Detection_CNN
+# EmoMelody-2.0
 
-Data Set Link - https://www.kaggle.com/jonathanoheix/face-expression-recognition-dataset
